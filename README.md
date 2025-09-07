@@ -118,8 +118,9 @@ For a complete explanation of the project, including:
 * Results and Visualizations
 * Future Scope
 
-Please refer to the full report:
-**[Quantum State Evolution and Decoherence Simulation.pdf](Project Report/Quantum_State_Evolution_Report.pdf)**
+Please refer to the full report:  
+**[Quantum State Evolution and Decoherence Simulation.pdf](Project%20Report/Quantum_State_Evolution_Report.pdf)**
+
 
 ---
 
