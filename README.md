@@ -44,7 +44,7 @@ Using **Python** and the **QuTiP library**, the simulation visualizes how quantu
 Bar chart showing how qubit probabilities change under different noise conditions.
 
 *Example visualization:*
-![Qubit Probabilities](images/qubit_probabilities.png)
+![Qubit Probabilities](images/qubit_probabilities.jpeg)
 
 ---
 
@@ -53,7 +53,7 @@ Bar chart showing how qubit probabilities change under different noise condition
 Graph illustrating the **loss of entanglement** as the system is subjected to **phase noise** and **amplitude damping** over time.
 
 *Example visualization:*
-![Entanglement Decay](images/entanglement_decay.png)
+![Entanglement Decay](images/entanglement_decay.jpeg)
 
 ---
 
@@ -61,7 +61,7 @@ Graph illustrating the **loss of entanglement** as the system is subjected to **
 
 The **Bloch Sphere** is used to visualize the state vector of a qubit and its transformation under noise.
 
-![Bloch Sphere](images/bloch_sphere.png)
+![Bloch Sphere](images/bloch_sphere.jpeg)
 
 ---
 
