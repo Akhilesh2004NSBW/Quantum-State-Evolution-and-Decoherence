@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quantum State Simulation</title>
+
+  <!-- Chart.js for visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Plotly for 3D plots -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+  <style>
+    /* Global styling */
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg,#0f172a,#1e293b);
+      color:#e2e8f0; display:flex; flex-direction:column; align-items:center;
+      min-height:100vh; padding:20px;
+    }
+    h1 { color:#60a5fa; text-align:center; margin-bottom:20px; font-size:2.5rem; }
+
+    .card {
+      background: rgba(30,41,59,0.95); padding:30px; border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.6); max-width:800px; width:100%;
+      margin-bottom:20px; animation:fadeIn 1s ease-in-out;
+    }
+    @keyframes fadeIn { from {opacity:0; transform:translateY(-20px);} to {opacity:1; transform:translateY(0);} }
+
+    label { display:block; margin-bottom:6px; font-weight:600; color:#cbd5e1; }
+    input, select, button { width:100%; padding:10px; margin-bottom:15px; border:none; border-radius:8px; outline:none; font-size:1rem; }
+    input, select { background:#1e293b; color:#f1f5f9; }
+    input:focus, select:focus { border:1px solid #3b82f6; box-shadow:0 0 10px rgba(59,130,246,0.5); }
+    button { background:#3b82f6; color:white; font-weight:bold; cursor:pointer; transition:0.3s; }
+    button:hover { background:#2563eb; }
+
+    .spinner { display:none; text-align:center; margin:15px 0; }
+    .spinner div { width:18px; height:18px; background:#60a5fa; border-radius:100%; display:inline-block; animation:bounce 1.4s infinite ease-in-out both; }
+    .spinner div:nth-child(1){animation-delay:-0.32s;}
+    .spinner div:nth-child(2){animation-delay:-0.16s;}
+    @keyframes bounce {0%,80%,100%{transform:scale(0);}40%{transform:scale(1);}}
+
+    .results { display:none; margin-top:20px; padding:15px; border-radius:10px; background:#1e293b; }
+    .result-item { padding:10px; border-bottom:1px solid #334155; }
+    .result-item:last-child { border-bottom:none; }
+    .error { color:#f87171; font-weight:bold; }
+
+    /* Chart containers */
+    canvas { margin-top:20px; background:#0f172a; border-radius:10px; padding:10px; }
+    #plot3d { width:100%; height:400px; margin-top:20px; }
+
+    .summary-btn { background:#10b981; margin-top:10px; }
+    .summary-content { display:none; margin-top:10px; padding:10px; border-radius:10px; background:#334155; }
+  </style>
+</head>
+
+<body>
+  <h1>Quantum State Simulation</h1>
+
+  <div class="card">
+    <form id="simulationForm">
+      <label for="noise_type">Noise Type</label>
+      <select id="noise_type" name="noise_type">
+        <option value="None">None</option>
+        <option value="Phase Noise">Phase Noise</option>
+        <option value="Amplitude Damping">Amplitude Damping</option>
+        <option value="Depolarizing Noise">Depolarizing Noise</option>
+        <option value="Bit Flip">Bit Flip</option>
+        <option value="Phase Flip">Phase Flip</option>
+      </select>
+
+      <label for="gamma">Gamma (Noise Strength)</label>
+      <input type="number" id="gamma" name="gamma" min="0" max="1" step="0.01" value="0.05">
+
+      <label for="p">Probability p (for Bit/Phase Flip)</label>
+      <input type="number" id="p" name="p" min="0" max="1" step="0.01" value="0.05">
+
+      <label for="t_steps">Time Steps</label>
+      <input type="number" id="t_steps" name="t_steps" min="2" max="200" value="50">
+
+      <button type="submit">Run Simulation</button>
+    </form>
+
+    <div class="spinner" id="loading"><div></div><div></div><div></div><p>Running simulation...</p></div>
+
+    <div class="results" id="results">
+      <h2>Simulation Results</h2>
+      <div id="resultContainer"></div>
+      <button class="summary-btn" id="toggleSummary">Show/Hide Summary</button>
+      <div class="summary-content" id="summaryContent"></div>
+
+      <canvas id="probChart"></canvas>
+      <canvas id="fidelityChart"></canvas>
+      <canvas id="entChart"></canvas>
+      <div id="plot3d"></div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('simulationForm');
+      const loading = document.getElementById('loading');
+      const results = document.getElementById('results');
+      const resultContainer = document.getElementById('resultContainer');
+      const summaryBtn = document.getElementById('toggleSummary');
+      const summaryContent = document.getElementById('summaryContent');
+      let probChart, fidelityChart, entChart;
+
+      summaryBtn.addEventListener('click', ()=> {
+        summaryContent.style.display = summaryContent.style.display === 'block' ? 'none' : 'block';
+      });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        loading.style.display = 'block';
+        results.style.display = 'none';
+        resultContainer.innerHTML = '';
+        summaryContent.innerHTML = '';
+
+        const payload = {
+          noise_type: document.getElementById('noise_type').value,
+          gamma: parseFloat(document.getElementById('gamma').value),
+          p: parseFloat(document.getElementById('p').value),
+          t_steps: parseInt(document.getElementById('t_steps').value)
+        };
+
+        try {
+          const response = await fetch('/run', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+          });
+          const data = await response.json();
+          loading.style.display = 'none';
+          results.style.display = 'block';
+
+          // Show final results
+          const prob = data.summary.final_prob;
+          resultContainer.innerHTML = `
+            <div class="result-item"><strong>Final Probabilities:</strong></div>
+            <ul style="list-style:none;padding-left:10px;margin-top:5px;">
+              <li>Q0 |0⟩: ${prob.q0_0.toFixed(4)}</li>
+              <li>Q0 |1⟩: ${prob.q0_1.toFixed(4)}</li>
+              <li>Q1 |0⟩: ${prob.q1_0.toFixed(4)}</li>
+              <li>Q1 |1⟩: ${prob.q1_1.toFixed(4)}</li>
+            </ul>
+            <div class="result-item"><strong>Final Fidelity:</strong> ${data.summary.final_fidelity.toFixed(4)}</div>
+            <div class="result-item"><strong>Final Entanglement:</strong> ${data.summary.final_entanglement.toFixed(4)}</div>
+          `;
+
+          // Summary info
+          summaryContent.innerHTML = `
+            <p>The simulation shows how qubit states evolve under <strong>${payload.noise_type}</strong> with gamma=${payload.gamma} and p=${payload.p} over ${payload.t_steps} time steps.</p>
+            <p>Fidelity measures closeness to the initial Bell state. Concurrence shows entanglement level between qubits.</p>
+          `;
+
+          // Probability Bar Chart
+          const finalProb = Object.values(prob);
+          const labels = Object.keys(prob);
+          if(probChart) probChart.destroy();
+          probChart = new Chart(document.getElementById('probChart'), {
+            type:'bar', data:{labels:labels,datasets:[{label:'Probability',data:finalProb,backgroundColor:'#3b82f6'}]},
+            options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:1}}}
+          });
+
+          // Fidelity over time
+          const tlist = data.detail.tlist;
+          if(fidelityChart) fidelityChart.destroy();
+          fidelityChart = new Chart(document.getElementById('fidelityChart'),{
+            type:'line', data:{labels:tlist,datasets:[{label:'Fidelity',data:data.detail.fidelity_time,borderColor:'#10b981',fill:false}]},
+            options:{responsive:true,plugins:{legend:{display:true}},scales:{y:{beginAtZero:true,max:1}}}
+          });
+
+          // Entanglement over time
+          if(entChart) entChart.destroy();
+          entChart = new Chart(document.getElementById('entChart'),{
+            type:'line', data:{labels:tlist,datasets:[{label:'Concurrence',data:data.detail.ent_time,borderColor:'#fbbf24',fill:false}]},
+            options:{responsive:true,plugins:{legend:{display:true}},scales:{y:{beginAtZero:true,max:1}}}
+          });
+
+          // 3D Probability surface using Plotly
+          const yLabels = ['q0_0','q0_1','q1_0','q1_1'];
+          const zData = yLabels.map(lbl => data.detail.prob_time.map(pt => pt[lbl]));
+          const traces = yLabels.map((lbl,i)=>({
+            x:tlist, y:Array(tlist.length).fill(i), z:zData[i],
+            type:'scatter3d', mode:'lines', name:lbl, line:{width:4}
+          }));
+          Plotly.newPlot('plot3d', traces, {
+            title:'3D Probability Evolution',
+            scene:{xaxis:{title:'Time'},yaxis:{title:'States',tickvals:[0,1,2,3],ticktext:yLabels},zaxis:{title:'Probability',range:[0,1]}},
+            margin:{l:0,r:0,b:0,t:50}
+          });
+
+        } catch(err) {
+          loading.style.display='none';
+          results.style.display='block';
+          resultContainer.innerHTML=`<p class="error">Error: ${err.message}</p>`;
+        }
+      });
+    });
+  </script>
+</body>
+</html>

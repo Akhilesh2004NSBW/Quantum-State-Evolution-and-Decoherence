@@ -1,0 +1,7 @@
+Flask==2.3.2
+qutip==4.7.1
+numpy
+pandas
+matplotlib
+cloudpickle
+chart.js==3.9.1
